@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import { Box3, Group, Mesh, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { deinterleaveAttribute, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // GLTFExporter uses the browser FileReader API even for texture-free GLBs.
 globalThis.FileReader = function () {
@@ -13,12 +13,15 @@ globalThis.FileReader = function () {
 };
 
 const sources = [
+  ['current', 'remorque_JALON_JPLA750'],
   [11, 'remorque_JALON_JPLA750_etude_11_velos_225mm'],
   [13, 'remorque_etude_13_velos_plateau_3000x1600'],
   [15, 'remorque_etude_15_velos_plateau_3450x1600'],
 ];
-const reports = [];
+const onlyId = process.argv[2];
+const reports = onlyId ? JSON.parse(await fs.readFile('model-optimization.json', 'utf8')) : [];
 for (const [id, name] of sources) {
+  if (onlyId && String(id) !== onlyId) continue;
   const data = await fs.readFile(`../current_version/modele_3d/${name}.glb`);
   const { scene } = await new GLTFLoader().parseAsync(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength), '');
   scene.updateMatrixWorld(true);
@@ -29,7 +32,12 @@ for (const [id, name] of sources) {
     if (!object.isMesh) return;
     if (object.isSkinnedMesh || Array.isArray(object.material)) throw new Error('Unsupported animated or multi-material geometry');
     originalMeshes++;
-    const geometry = object.geometry.clone().applyMatrix4(object.matrixWorld);
+    const geometry = object.geometry.clone();
+    for (const [name, attribute] of Object.entries(geometry.attributes)) {
+      if (attribute.isInterleavedBufferAttribute) geometry.setAttribute(name, deinterleaveAttribute(attribute));
+    }
+    if (!geometry.getAttribute('normal')) geometry.computeVertexNormals();
+    geometry.applyMatrix4(object.matrixWorld);
     // No source material uses textures. Removing unused UVs allows shared batches.
     for (const attribute of Object.keys(geometry.attributes)) {
       if (!['position', 'normal'].includes(attribute)) geometry.deleteAttribute(attribute);
@@ -63,7 +71,9 @@ for (const [id, name] of sources) {
   const binary = await new GLTFExporter().parseAsync(output, { binary: true, onlyVisible: false });
   await fs.writeFile(`public/models/trailer-${id}.glb`, Buffer.from(binary));
   const report = { id, source: name, originalMeshes, drawCalls: output.children.length, triangles, size: after.getSize(new Vector3()).toArray(), min: after.min.toArray(), max: after.max.toArray(), bytes: binary.byteLength };
-  reports.push(report);
+  const existingIndex = reports.findIndex((item) => item.id === id);
+  if (existingIndex === -1) reports.push(report);
+  else reports[existingIndex] = report;
   console.log(JSON.stringify(report));
 }
 await fs.writeFile('model-optimization.json', JSON.stringify(reports, null, 2));

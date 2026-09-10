@@ -1,6 +1,8 @@
 # Trailer operations viewer
 
-English 3D review of the 11, 13 and 15-position bicycle trailer studies.
+English 3D review of the current bicycle trailer and the 11, 13 and 15-position alternatives.
+
+The current model has 13 positions on the original 2,550 mm nominal deck, with 200 mm rail spacing and 400 mm post spacing on the same side. It is distinct from the extended 13-position study, which uses a 3,000 mm deck and 225 / 450 mm spacing. The reference model is the default selection.
 
 ## Online viewer
 
@@ -25,7 +27,7 @@ Select a model, drag to orbit, scroll to zoom and right-drag to pan. The preset 
 
 ## Sources and scope
 
-Geometry comes from copies of the three study GLBs in `../current_version/modele_3d`. Data comes from their JSON reports and study PDF sheets. All models retain metres as their physical units, with identical camera framing for direct switching. Nominal deck dimensions can differ from actual geometry and small protrusions. Dimension guides are nominal, not a measurement tool.
+Geometry comes from copies of the validated reference GLB and three study GLBs in `../current_version/modele_3d`. Data comes from their JSON reports and study PDF sheets. The current layout occupies 2,460 mm longitudinally, leaving 25 mm at each end of the 2,510 mm modelled floor. All models retain metres as their physical units, with identical camera framing for direct switching. Nominal deck dimensions can differ from actual geometry and small protrusions. Dimension guides are nominal, not a measurement tool.
 
 Capacity means modelled bicycle positions. Bicycle clearances and permissible payload remain unvalidated. Extended chassis strength and load balance also require validation. This viewer is for internal discussion, not fabrication or operational approval.
 

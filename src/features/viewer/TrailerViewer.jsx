@@ -15,9 +15,9 @@ const paths = {
 };
 const Icon = ({ name }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 
-/** Interactive operations review of the three bicycle trailer studies. */
+/** Interactive operations review of the current trailer and three alternative layouts. */
 export const TrailerViewer = () => {
-  const [selected, setSelected] = useState(11);
+  const [selected, setSelected] = useState('current');
   const [view, setView] = useState('Perspective');
   const [dimensions, setDimensions] = useState(false);
   const [rotating, setRotating] = useState(false);
@@ -65,7 +65,7 @@ export const TrailerViewer = () => {
     </header>
     <main className="workspace">
       <section className="stage" ref={stageRef} aria-label="Interactive trailer model" tabIndex={0} onKeyDown={handleKey}>
-        <div className="stage-heading"><p className="eyebrow">BICYCLE TRAILER STUDY</p><h1>{selected} bicycle positions</h1><p>{model.name}<span className="heading-separator">/</span>JPLA750-based layout</p></div>
+        <div className="stage-heading"><p className="eyebrow">BICYCLE TRAILER STUDY</p><h1>{model.id === 'current' ? 'Current model' : `${model.capacity} bicycle positions`}</h1><p>{model.name}<span className="heading-separator">/</span>JPLA750-based layout</p></div>
         <div className="stage-tools flex flex-col gap-2">
           <button className="icon-button" onClick={resetCamera} title="Reset view (R)" aria-label="Reset view"><Icon name="reset" /></button>
           {document.fullscreenEnabled && <button className="icon-button" onClick={toggleFullscreen} title={fullscreen ? 'Exit full screen' : 'Full screen'} aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}><Icon name="expand" /></button>}
@@ -74,7 +74,7 @@ export const TrailerViewer = () => {
           {!contextLost && <Canvas shadows frameloop={rotating ? 'always' : 'demand'} dpr={[1, 1.6]} camera={{ position: [-5.35, 4.32, 5], fov: 37, near: 0.05, far: 100 }} gl={{ antialias: true, powerPreference: 'high-performance' }} fallback={<div className="load-state"><p>3D is unavailable in this browser. Enable hardware acceleration or use another browser.</p></div>} onCreated={({ gl }) => { gl.domElement.addEventListener('webglcontextlost', (event) => { event.preventDefault(); setContextLost(true); }, { once: true }); }}>
             <TrailerScene scene={scene} model={model} dimensions={dimensions} view={view} reset={reset} rotating={rotating} onInteract={stopRotation} reducedMotion={reducedMotion} controlsRef={controlsRef} />
           </Canvas>}
-          {(!scene || contextLost) && <div className="load-state" role="status"><img src={model.preview} alt={`${selected}-position trailer perspective preview`} /><div className="load-message">{error || contextLost ? <><strong>{contextLost ? 'The 3D view was interrupted.' : 'Model unavailable'}</strong><p>{error || 'Reload the viewer to restore the 3D view.'}</p><button className="compare-button" onClick={() => contextLost ? location.reload() : setRetry((value) => value + 1)}>Try again</button></> : <><strong>Preparing your {selected}-position trailer</strong><progress max="100" value={progress} aria-label="Loading model" /><span>{progress}%</span></>}</div></div>}
+          {(!scene || contextLost) && <div className="load-state" role="status"><img src={model.preview} alt={`${model.label} trailer perspective preview`} /><div className="load-message">{error || contextLost ? <><strong>{contextLost ? 'The 3D view was interrupted.' : 'Model unavailable'}</strong><p>{error || 'Reload the viewer to restore the 3D view.'}</p><button className="compare-button" onClick={() => contextLost ? location.reload() : setRetry((value) => value + 1)}>Try again</button></> : <><strong>Preparing {model.label.toLowerCase()}</strong><progress max="100" value={progress} aria-label="Loading model" /><span>{progress}%</span></>}</div></div>}
         </div>
         <div className="stage-bottom"><div className="view-controls" aria-label="Camera views">{['Perspective', 'Front', 'Rear', 'Side', 'Top'].map((name) => <button key={name} aria-pressed={view === name} onClick={() => { setView(name); setReset((value) => value + 1); setRotating(false); }}>{name}</button>)}</div>
           <div className="stage-options flex items-center justify-center gap-2"><button aria-pressed={dimensions} onClick={() => setDimensions((value) => !value)}><Icon name="ruler" />Dimensions</button><button aria-pressed={rotating} onClick={() => setRotating((value) => !value)}><Icon name="rotate" />{rotating ? 'Stop rotation' : 'Auto rotate'}</button></div>
@@ -82,14 +82,14 @@ export const TrailerViewer = () => {
         </div>
       </section>
       <aside className="spec-panel" aria-label="Selected trailer specifications">
-        <p className="eyebrow">SELECTED LAYOUT</p><div className="capacity"><strong>{selected}</strong><span>bicycle<br />positions</span></div><p className="model-description">{model.description}</p>
-        <dl className="spec-list"><div><dt>Nominal loading area</dt><dd>{model.deck.toLocaleString('en-GB')} × 1,600 <small>mm</small></dd></div><div><dt>Nominal overall length</dt><dd>{mm(model.total)}</dd></div><div><dt>Rail centre spacing</dt><dd>225 <small>mm</small></dd></div><div><dt>Post arrangement</dt><dd>{model.posts}</dd></div></dl>
-        <div className="length-comparison"><h2>Overall length</h2>{models.map((item) => <div key={item.id} className={`length-row ${item.id === selected ? 'active' : ''}`}><span>{item.id}</span><div><i style={{ width: `${item.total / 4445 * 100}%` }} /></div><span>{(item.total / 1000).toFixed(3)} m</span></div>)}<p>Same scale across all three models</p></div>
-        <details className="study-note"><summary>Layout study · validation pending</summary><p>Positions describe the modelled layout. Actual bicycle clearance and permissible payload need confirmation. The extended chassis and load balance also need validation.</p><p>Dimensions follow the local 11, 13 and 15-position study reports.</p></details>
+        <p className="eyebrow">SELECTED LAYOUT</p><div className="capacity"><strong>{model.capacity}</strong><span>bicycle<br />positions</span></div><p className="model-description">{model.description}</p>
+        <dl className="spec-list"><div><dt>Nominal loading area</dt><dd>{model.deck.toLocaleString('en-GB')} × 1,600 <small>mm</small></dd></div><div><dt>Nominal overall length</dt><dd>{mm(model.total)}</dd></div><div><dt>Rail centre spacing</dt><dd>{model.railSpacing} <small>mm</small></dd></div><div><dt>Post spacing, same side</dt><dd>{model.postSpacing} <small>mm</small></dd></div><div><dt>Post arrangement</dt><dd>{model.posts}</dd></div></dl>
+        <div className="length-comparison"><h2>Overall length</h2>{models.map((item) => <div key={item.id} className={`length-row ${item.id === selected ? 'active' : ''}`}><span>{item.id === 'current' ? 'Ref' : item.capacity}</span><div><i style={{ width: `${item.total / 4445 * 100}%` }} /></div><span>{(item.total / 1000).toFixed(3)} m</span></div>)}<p>Same scale across all models</p></div>
+        <details className="study-note"><summary>Layout study · validation pending</summary><p>Positions describe the modelled layout. Actual bicycle clearance and permissible payload need confirmation. The extended chassis and load balance also need validation.</p><p>Dimensions follow the current reference model and local study reports.</p></details>
       </aside>
-      <nav className="model-selector" aria-label="Choose trailer capacity">{models.map((item) => <button key={item.id} className={`model-option ${item.id === selected ? 'selected' : ''}`} aria-pressed={item.id === selected} onClick={() => chooseModel(item.id)}><img src={item.preview} alt="" /><span className="model-option-copy"><strong>{item.id} positions</strong><span>{item.name}</span><small>{item.deck.toLocaleString('en-GB')} × 1,600 mm deck</small></span><span className="selection-mark" aria-hidden="true">{item.id === selected ? '✓' : '+'}</span></button>)}</nav>
+      <nav className="model-selector" aria-label="Choose trailer model">{models.map((item) => <button key={item.id} className={`model-option ${item.id === selected ? 'selected' : ''}`} aria-pressed={item.id === selected} onClick={() => chooseModel(item.id)}><img src={item.preview} alt="" /><span className="model-option-copy"><strong>{item.label}</strong><span>{item.name}</span><small>{item.deck.toLocaleString('en-GB')} × 1,600 mm deck</small></span><span className="selection-mark" aria-hidden="true">{item.id === selected ? '✓' : '+'}</span></button>)}</nav>
     </main>
-    <footer className="app-footer flex items-center justify-between gap-3"><span>JPLA750 layout studies</span><span>11 / 13 / 15 positions <span className="footer-divider">·</span> Internal review</span></footer>
+    <footer className="app-footer flex items-center justify-between gap-3"><span>JPLA750 layout studies</span><span>Current + 11 / 13 / 15 positions <span className="footer-divider">·</span> Internal review</span></footer>
     {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss message">×</button></div>}
     <CompareDialog open={compare} onClose={() => setCompare(false)} selected={selected} onSelect={chooseModel} />
   </div>;

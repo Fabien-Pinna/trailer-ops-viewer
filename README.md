@@ -2,6 +2,12 @@
 
 English 3D review of the 11, 13 and 15-position bicycle trailer studies.
 
+## Online viewer
+
+Open https://Fabien-Pinna.github.io/trailer-ops-viewer/ without a GitHub account. The website, models and source repository are public.
+
+GitHub Actions builds and deploys `main` to GitHub Pages after each push. The workflow sets the deployment base path from the Pages configuration while local development keeps relative paths.
+
 ## Run
 
 Requires Node.js 22.12+ or 24 and npm.

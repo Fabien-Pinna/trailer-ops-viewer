@@ -15,7 +15,7 @@ const paths = {
 };
 const Icon = ({ name }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 
-/** Interactive operations review of the current trailer and three alternative layouts. */
+/** Interactive operations review of the current trailer and four alternative layouts. */
 export const TrailerViewer = () => {
   const [selected, setSelected] = useState('current');
   const [view, setView] = useState('Perspective');
@@ -89,7 +89,7 @@ export const TrailerViewer = () => {
       </aside>
       <nav className="model-selector" aria-label="Choose trailer model">{models.map((item) => <button key={item.id} className={`model-option ${item.id === selected ? 'selected' : ''}`} aria-pressed={item.id === selected} onClick={() => chooseModel(item.id)}><img src={item.preview} alt="" /><span className="model-option-copy"><strong>{item.label}</strong><span>{item.name}</span><small>{item.deck.toLocaleString('en-GB')} × 1,600 mm deck</small></span><span className="selection-mark" aria-hidden="true">{item.id === selected ? '✓' : '+'}</span></button>)}</nav>
     </main>
-    <footer className="app-footer flex items-center justify-between gap-3"><span>JPLA750 layout studies</span><span>Current + 11 / 13 / 15 positions <span className="footer-divider">·</span> Internal review</span></footer>
+    <footer className="app-footer flex items-center justify-between gap-3"><span>JPLA750 layout studies</span><span>Current + 11 / 13 / 14 / 15 positions <span className="footer-divider">·</span> Internal review</span></footer>
     {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss message">×</button></div>}
     <CompareDialog open={compare} onClose={() => setCompare(false)} selected={selected} onSelect={chooseModel} />
   </div>;

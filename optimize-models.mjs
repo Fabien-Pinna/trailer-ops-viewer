@@ -16,6 +16,7 @@ const sources = [
   ['current', 'remorque_JALON_JPLA750'],
   [11, 'remorque_JALON_JPLA750_etude_11_velos_225mm'],
   [13, 'remorque_etude_13_velos_plateau_3000x1600'],
+  [14, 'remorque_etude_14_velos_plateau_3225x1600'],
   [15, 'remorque_etude_15_velos_plateau_3450x1600'],
 ];
 const onlyId = process.argv[2];

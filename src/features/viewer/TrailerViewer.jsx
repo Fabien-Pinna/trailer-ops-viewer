@@ -20,6 +20,7 @@ export const TrailerViewer = () => {
   const [selected, setSelected] = useState('current');
   const [view, setView] = useState('Perspective');
   const [dimensions, setDimensions] = useState(false);
+  const [withBikes, setWithBikes] = useState(false);
   const [rotating, setRotating] = useState(false);
   const [reset, setReset] = useState(0);
   const [retry, setRetry] = useState(0);
@@ -31,7 +32,8 @@ export const TrailerViewer = () => {
   const stageRef = useRef();
   const controlsRef = useRef();
   const model = models.find((item) => item.id === selected);
-  const { scene, progress, error } = useTrailerModel(model.url, retry);
+  const showingBikes = withBikes && Boolean(model.bikesUrl);
+  const { scene, progress, error } = useTrailerModel(showingBikes ? model.bikesUrl : model.url, retry);
   const stopRotation = useCallback(() => setRotating(false), []);
   useEffect(() => {
     const query = matchMedia('(prefers-reduced-motion: reduce)');
@@ -70,11 +72,18 @@ export const TrailerViewer = () => {
           <button className="icon-button" onClick={resetCamera} title="Reset view (R)" aria-label="Reset view"><Icon name="reset" /></button>
           {document.fullscreenEnabled && <button className="icon-button" onClick={toggleFullscreen} title={fullscreen ? 'Exit full screen' : 'Full screen'} aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}><Icon name="expand" /></button>}
         </div>
+        <div className="bike-controls">
+          <div className="view-controls" role="group" aria-label="Bicycle display">
+            <button aria-pressed={!showingBikes} onClick={() => { setWithBikes(false); stopRotation(); }}>Without bicycles</button>
+            <button aria-pressed={showingBikes} disabled={!model.bikesUrl} aria-describedby={!model.bikesUrl ? 'bikes-availability' : undefined} onClick={() => { setWithBikes(true); stopRotation(); }}>With bicycles</button>
+          </div>
+          <p id="bikes-availability" role="status">{model.bikesUrl ? (showingBikes ? `${model.capacity} bicycles · ${model.id === 'current' ? 'staggered layout v5' : 'fitted rail layout'}` : 'Unloaded layout') : 'Bicycle version available for Current, 13 and 14 positions'}</p>
+        </div>
         <div className="canvas-area">
           {!contextLost && <Canvas shadows frameloop={rotating ? 'always' : 'demand'} dpr={[1, 1.6]} camera={{ position: [-5.35, 4.32, 5], fov: 37, near: 0.05, far: 100 }} gl={{ antialias: true, powerPreference: 'high-performance' }} fallback={<div className="load-state"><p>3D is unavailable in this browser. Enable hardware acceleration or use another browser.</p></div>} onCreated={({ gl }) => { gl.domElement.addEventListener('webglcontextlost', (event) => { event.preventDefault(); setContextLost(true); }, { once: true }); }}>
             <TrailerScene scene={scene} model={model} dimensions={dimensions} view={view} reset={reset} rotating={rotating} onInteract={stopRotation} reducedMotion={reducedMotion} controlsRef={controlsRef} />
           </Canvas>}
-          {(!scene || contextLost) && <div className="load-state" role="status"><img src={model.preview} alt={`${model.label} trailer perspective preview`} /><div className="load-message">{error || contextLost ? <><strong>{contextLost ? 'The 3D view was interrupted.' : 'Model unavailable'}</strong><p>{error || 'Reload the viewer to restore the 3D view.'}</p><button className="compare-button" onClick={() => contextLost ? location.reload() : setRetry((value) => value + 1)}>Try again</button></> : <><strong>Preparing {model.label.toLowerCase()}</strong><progress max="100" value={progress} aria-label="Loading model" /><span>{progress}%</span></>}</div></div>}
+          {(!scene || contextLost) && <div className="load-state" role="status"><img src={model.preview} alt={`${model.label} trailer perspective preview`} /><div className="load-message">{error || contextLost ? <><strong>{contextLost ? 'The 3D view was interrupted.' : 'Model unavailable'}</strong><p>{error || 'Reload the viewer to restore the 3D view.'}</p><button className="compare-button" onClick={() => contextLost ? location.reload() : setRetry((value) => value + 1)}>Try again</button></> : <><strong>Preparing {model.label.toLowerCase()} {showingBikes ? 'with bicycles' : 'without bicycles'}</strong><progress max="100" value={progress} aria-label="Loading model" /><span>{progress}%</span></>}</div></div>}
         </div>
         <div className="stage-bottom"><div className="view-controls" aria-label="Camera views">{['Perspective', 'Front', 'Rear', 'Side', 'Top'].map((name) => <button key={name} aria-pressed={view === name} onClick={() => { setView(name); setReset((value) => value + 1); setRotating(false); }}>{name}</button>)}</div>
           <div className="stage-options flex items-center justify-center gap-2"><button aria-pressed={dimensions} onClick={() => setDimensions((value) => !value)}><Icon name="ruler" />Dimensions</button><button aria-pressed={rotating} onClick={() => setRotating((value) => !value)}><Icon name="rotate" />{rotating ? 'Stop rotation' : 'Auto rotate'}</button></div>

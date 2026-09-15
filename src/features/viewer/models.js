@@ -7,7 +7,7 @@ export const models = [
   { id: 13, name: 'Extended deck', deck: 3000, floor: 2960, total: 3995, rack: 2770, posts: '7 left / 6 right', extra: 450, description: 'Two more positions with a 450 mm extension to the trailer.' },
   { id: 14, name: 'Balanced rows', deck: 3225, floor: 3185, total: 4220, rack: 2995, posts: '7 left / 7 right', extra: 675, description: '14 positions with seven posts on each side and a 675 mm extension to the trailer.' },
   { id: 15, name: 'Longest deck', deck: 3450, floor: 3410, total: 4445, rack: 3220, posts: '8 left / 7 right', extra: 900, description: 'Four more positions with a 900 mm extension to the trailer.' },
-].map((model) => ({ capacity: model.id, label: `${model.id} positions`, railSpacing: 225, postSpacing: 450, endMargin: 95, ...model, url: asset(`models/trailer-${model.id}.glb`), preview: asset(`previews/trailer-${model.id}.png`) }));
+].map((model) => ({ capacity: model.id, label: `${model.id} positions`, railSpacing: 225, postSpacing: 450, endMargin: 95, ...model, url: asset(`models/trailer-${model.id}.glb`), bikesUrl: ['current', 13, 14].includes(model.id) ? asset(`models/trailer-${model.id}-bikes.glb`) : null, preview: asset(`previews/trailer-${model.id}.png`) }));
 
 /** Format dimensions consistently for an English operations audience. */
 export const mm = (value) => `${value.toLocaleString('en-GB')} mm`;

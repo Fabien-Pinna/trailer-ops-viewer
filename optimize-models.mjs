@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import { Box3, Group, Mesh, Vector3 } from 'three';
+import { Box3, Group, InstancedMesh, Mesh, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { deinterleaveAttribute, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -18,6 +18,9 @@ const sources = [
   [13, 'remorque_etude_13_velos_plateau_3000x1600'],
   [14, 'remorque_etude_14_velos_plateau_3225x1600'],
   [15, 'remorque_etude_15_velos_plateau_3450x1600'],
+  ['13-bikes', 'remorque_etude_13_velos_plateau_3000x1600_velos_finaux'],
+  ['14-bikes', 'remorque_etude_14_velos_plateau_3225x1600_velos_finaux'],
+  ['current-bikes', 'remorque_13_velos_quinconce_v5'],
 ];
 const onlyId = process.argv[2];
 const reports = onlyId ? JSON.parse(await fs.readFile('model-optimization.json', 'utf8')) : [];
@@ -28,11 +31,20 @@ for (const [id, name] of sources) {
   scene.updateMatrixWorld(true);
   const before = new Box3().setFromObject(scene);
   const groups = new Map();
+  const bikeGroups = new Map();
   let triangles = 0, originalMeshes = 0;
   scene.traverse((object) => {
     if (!object.isMesh) return;
     if (object.isSkinnedMesh || Array.isArray(object.material)) throw new Error('Unsupported animated or multi-material geometry');
     originalMeshes++;
+    // Reuse repeated bicycle parts rather than duplicating their vertices per bicycle.
+    if (object.name.startsWith('BIKE-')) {
+      const key = `${object.geometry.uuid}:${object.material.uuid}`;
+      if (!bikeGroups.has(key)) bikeGroups.set(key, { geometry: object.geometry, material: object.material, matrices: [] });
+      bikeGroups.get(key).matrices.push(object.matrixWorld.clone());
+      triangles += object.geometry.index.count / 3;
+      return;
+    }
     const geometry = object.geometry.clone();
     for (const [name, attribute] of Object.entries(geometry.attributes)) {
       if (attribute.isInterleavedBufferAttribute) geometry.setAttribute(name, deinterleaveAttribute(attribute));
@@ -57,6 +69,13 @@ for (const [id, name] of sources) {
     groups.get(key).geometries.push(geometry);
   });
   const output = new Group();
+  for (const { geometry, material, matrices } of bikeGroups.values()) {
+    const mesh = new InstancedMesh(geometry, material, matrices.length);
+    mesh.name = `Bicycles-${material.name}`;
+    matrices.forEach((matrix, index) => mesh.setMatrixAt(index, matrix));
+    mesh.instanceMatrix.needsUpdate = true;
+    output.add(mesh);
+  }
   for (const { material, geometries } of groups.values()) {
     const geometry = mergeGeometries(geometries);
     if (!geometry) throw new Error('Geometry batching failed');
@@ -67,7 +86,7 @@ for (const [id, name] of sources) {
   }
   const after = new Box3().setFromObject(output);
   if (before.min.distanceTo(after.min) > 0.00001 || before.max.distanceTo(after.max) > 0.00001) throw new Error('Model bounds changed');
-  const finalTriangles = output.children.reduce((sum, object) => sum + object.geometry.index.count / 3, 0);
+  const finalTriangles = output.children.reduce((sum, object) => sum + object.geometry.index.count / 3 * (object.isInstancedMesh ? object.count : 1), 0);
   if (finalTriangles !== triangles) throw new Error('Triangle count changed');
   const binary = await new GLTFExporter().parseAsync(output, { binary: true, onlyVisible: false });
   await fs.writeFile(`public/models/trailer-${id}.glb`, Buffer.from(binary));

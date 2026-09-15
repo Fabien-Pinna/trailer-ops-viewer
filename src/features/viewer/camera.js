@@ -16,8 +16,8 @@ export const getCameraPose = (view, aspect) => {
   const up = new Vector3().crossVectors(backward, right).normalize();
   const tangent = Math.tan(37 * Math.PI / 360);
   let distance = 2.5;
-  // Includes the largest trailer and the nominal dimension guides.
-  for (const x of [-2.75, 2.15]) for (const y of [-0.02, 1.45]) for (const z of [-0.9, 1.25]) {
+  // Includes the largest trailer, loaded bicycles and nominal dimension guides.
+  for (const x of [-2.75, 2.15]) for (const y of [-0.02, 2.05]) for (const z of [-1.1, 1.25]) {
     const relative = new Vector3(x, y, z).sub(target);
     const depth = relative.dot(backward);
     distance = Math.max(distance,

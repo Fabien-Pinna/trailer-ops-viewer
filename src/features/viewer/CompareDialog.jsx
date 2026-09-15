@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { mm, models } from './models.js';
+import measurementData from './measurements.json';
+import { measurementRange } from './measurements.js';
 
 /** Accessible modal comparison with native focus management and Escape handling. */
 export const CompareDialog = ({ open, onClose, selected, onSelect }) => {
@@ -14,6 +16,8 @@ export const CompareDialog = ({ open, onClose, selected, onSelect }) => {
     ['Nominal overall length', (m) => mm(m.total)],
     ['Extra length vs. current model', (m) => m.extra ? `+${mm(m.extra)}` : 'No extension'],
     ['Posts', (m) => m.posts],
+    ['Upright tube height', (m) => `${measurementRange(measurementData[m.id].posts.map((post) => post.size[1] * 1000))} mm`],
+    ['Outer upright section', () => '30 × 30 mm'],
     ['Rail centre spacing', (m) => mm(m.railSpacing)],
     ['Post spacing on the same side', (m) => mm(m.postSpacing)],
     ['End margin on floor', (m) => mm(m.endMargin)],
@@ -21,6 +25,6 @@ export const CompareDialog = ({ open, onClose, selected, onSelect }) => {
   return <dialog ref={ref} className="compare-dialog" onClose={onClose} onClick={(event) => { if (event.target === ref.current) onClose(); }} aria-labelledby="compare-heading">
     <div className="dialog-heading"><div><p className="eyebrow">DIMENSIONS & CAPACITY</p><h2 id="compare-heading">Compare trailer layouts</h2></div><button className="icon-button" onClick={onClose} aria-label="Close comparison">×</button></div>
     <div className="table-scroll"><table><thead><tr><th scope="col">Study specification</th>{models.map((m) => <th scope="col" key={m.id} className={m.id === selected ? 'chosen-column' : ''}><strong>{m.capacity}</strong> {m.id === 'current' ? 'Current model' : m.name}</th>)}</tr></thead><tbody>{rows.map(([label, value]) => <tr key={label}><th scope="row">{label}</th>{models.map((m) => <td key={m.id} className={m.id === selected ? 'chosen-column' : ''}>{value(m)}</td>)}</tr>)}</tbody><tfoot><tr><td />{models.map((m) => <td key={m.id}><button className="text-button" onClick={() => { onSelect(m.id); onClose(); }}>Explore {m.label} ↗</button></td>)}</tr></tfoot></table></div>
-    <p className="dialog-note">Capacity describes modelled positions. Real bicycle clearance, permissible payload and the extended chassis require validation.</p>
+    <p className="dialog-note">This table compares unloaded layouts. For fitted bicycle and end-post spacings, use the measurement sheet with bicycles enabled. Capacity describes modelled positions. Real bicycle clearance, permissible payload and the extended chassis require validation.</p>
   </dialog>;
 };

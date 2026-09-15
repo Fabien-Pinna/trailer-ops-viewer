@@ -27,6 +27,14 @@ Select a model, drag to orbit, scroll to zoom and right-drag to pan. The preset 
 
 ## Sources and scope
 
+### Measurement sheet
+
+The spacing sheet below the model selector provides bicycle spacing, upright dimensions and nominal loading-area dimensions. Select a pair to inspect its value, then choose **Show in 3D** for a matching top or side view. The stage's dimension categories show one family at a time. Left and right upright rows are measured independently, including end-post exceptions.
+
+Loaded bicycle spacing is the longitudinal distance between the wheel-centre axes where they intersect the middle of the deck width. It is not rear-axle-to-rear-axle distance or free clearance between bicycle parts. Empty layouts show nominal position pitch. Upright dimensions come from source GLB tube bounds; fittings are excluded and section measurements are external. Values are rounded to whole millimetres.
+
+`node extract-measurements.mjs` regenerates `src/features/viewer/measurements.json` from the original GLBs and loading reports. The generated data ships with the viewer; source files are only needed for regeneration. Run `node --test src/features/viewer/measurements.test.js` to check the measurement calculations and variant data.
+
 The **Without bicycles / With bicycles** control switches between the original unloaded study and the fitted bicycle export for the current reference (2,550 mm deck, `remorque_13_velos_quinconce_v5`), extended 13-position and 14-position layouts. Camera position and the bicycle preference are retained when switching models. The bicycle option is disabled for the 11-position and 15-position layouts. The loaded variants include their source rail and post adjustments.
 
 Regenerate the loaded web assets with `node optimize-models.mjs current-bikes`, `node optimize-models.mjs 13-bikes` and `node optimize-models.mjs 14-bikes`. Repeated bicycle geometry uses GPU instancing; trailer meshes are batched by material. All exports preserve triangle counts and geometry bounds.

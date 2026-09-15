@@ -4,6 +4,9 @@ import { TrailerScene } from './TrailerScene.jsx';
 import { CompareDialog } from './CompareDialog.jsx';
 import { useTrailerModel } from './useTrailerModel.js';
 import { mm, models } from './models.js';
+import measurementData from './measurements.json';
+import { MeasurementsPanel } from './MeasurementsPanel.jsx';
+import { measurementRange, postGaps } from './measurements.js';
 
 const paths = {
   ruler: <><path d="m4 15 11-11 5 5L9 20 4 15Z" /><path d="m12 7 2 2m-5 1 2 2m-5 1 2 2" /></>,
@@ -20,6 +23,9 @@ export const TrailerViewer = () => {
   const [selected, setSelected] = useState('current');
   const [view, setView] = useState('Perspective');
   const [dimensions, setDimensions] = useState(false);
+  const [measurementMode, setMeasurementMode] = useState('bikes');
+  const [measurementPair, setMeasurementPair] = useState(0);
+  const [postSide, setPostSide] = useState('left');
   const [withBikes, setWithBikes] = useState(false);
   const [rotating, setRotating] = useState(false);
   const [reset, setReset] = useState(0);
@@ -33,6 +39,7 @@ export const TrailerViewer = () => {
   const controlsRef = useRef();
   const model = models.find((item) => item.id === selected);
   const showingBikes = withBikes && Boolean(model.bikesUrl);
+  const measurements = measurementData[`${selected}${showingBikes ? '-bikes' : ''}`];
   const { scene, progress, error } = useTrailerModel(showingBikes ? model.bikesUrl : model.url, retry);
   const stopRotation = useCallback(() => setRotating(false), []);
   useEffect(() => {
@@ -45,6 +52,14 @@ export const TrailerViewer = () => {
   }, []);
   const resetCamera = () => { setRotating(false); setView('Perspective'); setReset((value) => value + 1); };
   const chooseModel = (id) => { setSelected(id); setRotating(false); };
+  const showMeasurements = () => {
+    setDimensions(true);
+    setView(measurementMode === 'bikes' ? 'Top' : measurementMode === 'posts' ? 'Side' : 'Perspective');
+    setReset((value) => value + 1);
+    stopRotation();
+    stageRef.current.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'start' });
+    stageRef.current.focus({ preventScroll: true });
+  };
   const toggleFullscreen = async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -81,22 +96,24 @@ export const TrailerViewer = () => {
         </div>
         <div className="canvas-area">
           {!contextLost && <Canvas shadows frameloop={rotating ? 'always' : 'demand'} dpr={[1, 1.6]} camera={{ position: [-5.35, 4.32, 5], fov: 37, near: 0.05, far: 100 }} gl={{ antialias: true, powerPreference: 'high-performance' }} fallback={<div className="load-state"><p>3D is unavailable in this browser. Enable hardware acceleration or use another browser.</p></div>} onCreated={({ gl }) => { gl.domElement.addEventListener('webglcontextlost', (event) => { event.preventDefault(); setContextLost(true); }, { once: true }); }}>
-            <TrailerScene scene={scene} model={model} dimensions={dimensions} view={view} reset={reset} rotating={rotating} onInteract={stopRotation} reducedMotion={reducedMotion} controlsRef={controlsRef} />
+            <TrailerScene scene={scene} model={model} dimensions={dimensions} measurements={measurements} measurementMode={measurementMode} measurementPair={measurementPair} postSide={postSide} view={view} reset={reset} rotating={rotating} onInteract={stopRotation} reducedMotion={reducedMotion} controlsRef={controlsRef} />
           </Canvas>}
           {(!scene || contextLost) && <div className="load-state" role="status"><img src={model.preview} alt={`${model.label} trailer perspective preview`} /><div className="load-message">{error || contextLost ? <><strong>{contextLost ? 'The 3D view was interrupted.' : 'Model unavailable'}</strong><p>{error || 'Reload the viewer to restore the 3D view.'}</p><button className="compare-button" onClick={() => contextLost ? location.reload() : setRetry((value) => value + 1)}>Try again</button></> : <><strong>Preparing {model.label.toLowerCase()} {showingBikes ? 'with bicycles' : 'without bicycles'}</strong><progress max="100" value={progress} aria-label="Loading model" /><span>{progress}%</span></>}</div></div>}
         </div>
         <div className="stage-bottom"><div className="view-controls" aria-label="Camera views">{['Perspective', 'Front', 'Rear', 'Side', 'Top'].map((name) => <button key={name} aria-pressed={view === name} onClick={() => { setView(name); setReset((value) => value + 1); setRotating(false); }}>{name}</button>)}</div>
-          <div className="stage-options flex items-center justify-center gap-2"><button aria-pressed={dimensions} onClick={() => setDimensions((value) => !value)}><Icon name="ruler" />Dimensions</button><button aria-pressed={rotating} onClick={() => setRotating((value) => !value)}><Icon name="rotate" />{rotating ? 'Stop rotation' : 'Auto rotate'}</button></div>
+          <div className="stage-options flex items-center justify-center gap-2"><button aria-pressed={dimensions} onClick={() => dimensions ? setDimensions(false) : showMeasurements()}><Icon name="ruler" />{dimensions ? 'Hide dimensions' : 'Dimensions'}</button><button aria-pressed={rotating} onClick={() => setRotating((value) => !value)}><Icon name="rotate" />{rotating ? 'Stop rotation' : 'Auto rotate'}</button></div>
+          {dimensions && <div className="stage-measurement-modes" role="group" aria-label="3D measurement category">{[['bikes', 'Bicycle spacing'], ['posts', 'Uprights'], ['deck', 'Loading area']].map(([id, label]) => <button key={id} aria-pressed={measurementMode === id} onClick={() => { setMeasurementMode(id); setView(id === 'bikes' ? 'Top' : id === 'posts' ? 'Side' : 'Perspective'); setReset((value) => value + 1); stopRotation(); }}>{label}</button>)}<a href="#measurements-heading">Details ↓</a></div>}
           <p className="interaction-hint">Drag to orbit · Scroll to zoom · Right-drag to pan <span>· Arrow keys to orbit, + / − to zoom</span></p>
         </div>
       </section>
       <aside className="spec-panel" aria-label="Selected trailer specifications">
-        <p className="eyebrow">SELECTED LAYOUT</p><div className="capacity"><strong>{model.capacity}</strong><span>bicycle<br />positions</span></div><p className="model-description">{model.description}</p>
-        <dl className="spec-list"><div><dt>Nominal loading area</dt><dd>{model.deck.toLocaleString('en-GB')} × 1,600 <small>mm</small></dd></div><div><dt>Nominal overall length</dt><dd>{mm(model.total)}</dd></div><div><dt>Rail centre spacing</dt><dd>{model.railSpacing} <small>mm</small></dd></div><div><dt>Post spacing, same side</dt><dd>{model.postSpacing} <small>mm</small></dd></div><div><dt>Post arrangement</dt><dd>{model.posts}</dd></div></dl>
+        <p className="eyebrow">SELECTED LAYOUT</p><div className="capacity"><strong>{model.capacity}</strong><span>bicycle<br />positions</span></div><p className="model-description">{showingBikes ? 'Fitted bicycle layout with adjusted rail and upright offsets. The measurement sheet follows this loaded variant.' : model.description}</p>
+        <dl className="spec-list"><div><dt>Nominal loading area</dt><dd>{model.deck.toLocaleString('en-GB')} × 1,600 <small>mm</small></dd></div><div><dt>Nominal overall length</dt><dd>{mm(model.total)}</dd></div><div><dt>{showingBikes ? 'Original unloaded rail pitch' : 'Rail centre spacing'}</dt><dd>{model.railSpacing} <small>mm</small></dd></div><div><dt>Upright height · outer section</dt><dd>{measurementRange(measurements.posts.map((post) => post.size[1] * 1000))} <small>mm · 30 × 30 mm</small></dd></div><div><dt>Post spacing, same side</dt><dd>{measurementRange(['left', 'right'].flatMap((side) => postGaps(measurements.posts, side).map((gap) => gap.value)))} <small>mm</small></dd></div><div><dt>Post arrangement</dt><dd>{model.posts}</dd></div></dl>
         <div className="length-comparison"><h2>Overall length</h2>{models.map((item) => <div key={item.id} className={`length-row ${item.id === selected ? 'active' : ''}`}><span>{item.id === 'current' ? 'Ref' : item.capacity}</span><div><i style={{ width: `${item.total / 4445 * 100}%` }} /></div><span>{(item.total / 1000).toFixed(3)} m</span></div>)}<p>Same scale across all models</p></div>
         <details className="study-note"><summary>Layout study · validation pending</summary><p>Positions describe the modelled layout. Actual bicycle clearance and permissible payload need confirmation. The extended chassis and load balance also need validation.</p><p>Dimensions follow the current reference model and local study reports.</p></details>
       </aside>
       <nav className="model-selector" aria-label="Choose trailer model">{models.map((item) => <button key={item.id} className={`model-option ${item.id === selected ? 'selected' : ''}`} aria-pressed={item.id === selected} onClick={() => chooseModel(item.id)}><img src={item.preview} alt="" /><span className="model-option-copy"><strong>{item.label}</strong><span>{item.name}</span><small>{item.deck.toLocaleString('en-GB')} × 1,600 mm deck</small></span><span className="selection-mark" aria-hidden="true">{item.id === selected ? '✓' : '+'}</span></button>)}</nav>
+      <MeasurementsPanel data={measurements} model={model} loaded={showingBikes} mode={measurementMode} onMode={setMeasurementMode} pair={measurementPair} onPair={setMeasurementPair} side={postSide} onSide={setPostSide} onShow={showMeasurements} />
     </main>
     <footer className="app-footer flex items-center justify-between gap-3"><span>JPLA750 layout studies</span><span>Current + 11 / 13 / 14 / 15 positions <span className="footer-divider">·</span> Internal review</span></footer>
     {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss message">×</button></div>}

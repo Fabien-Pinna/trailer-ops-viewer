@@ -3,6 +3,42 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { CameraControls, Environment, Html, Lightformer, Line } from '@react-three/drei';
 import { mm } from './models.js';
 import { getCameraPose } from './camera.js';
+import { bicycleGaps, postGaps } from './measurements.js';
+
+const Guide = ({ points, color = '#146d82' }) => <Line points={points} color={color} lineWidth={1.6} depthTest={false} transparent renderOrder={10} />;
+const GuideLabel = ({ position, children, caption }) => <Html position={position} center zIndexRange={[8, 0]} style={{ pointerEvents: 'none' }}><span className="dimension-label">{children}<small>{caption}</small></span></Html>;
+
+const DetailDimensions = ({ data, mode, pair, side }) => {
+  if (mode === 'bikes') {
+    const gaps = bicycleGaps(data.axes);
+    const gap = gaps[Math.min(pair, gaps.length - 1)];
+    const [x1, x2] = [gap.from.point[0], gap.to.point[0]];
+    return <group>
+      {[gap.from, gap.to].map(({ id, point }) => <group key={id}>
+        <Guide points={[point, [point[0], 1.98, 0], [point[0], 1.98, 1.15]]} />
+        <Guide points={[[point[0], 1.98, 1.09], [point[0], 1.98, 1.21]]} />
+      </group>)}
+      <Guide points={[[x1, 1.98, 1.15], [x2, 1.98, 1.15]]} />
+      <GuideLabel position={[(x1 + x2) / 2, 1.98, 1.38]} caption={`${gap.from.id} → ${gap.to.id} · deck centreline`}>{Math.round(gap.value)} mm</GuideLabel>
+    </group>;
+  }
+  const gaps = postGaps(data.posts, side);
+  const gap = gaps[Math.min(pair, gaps.length - 1)];
+  const [x1, x2] = [gap.from.centre[0], gap.to.centre[0]];
+  const bottom = gap.from.centre[1] - gap.from.size[1] / 2;
+  const top = bottom + gap.from.size[1];
+  const z = side === 'left' ? 1.08 : -1.08;
+  const color = '#a76824';
+  return <group>
+    {[gap.from, gap.to].map((post) => <Guide key={post.id} color={color} points={[post.centre, [post.centre[0], post.centre[1], z], [post.centre[0], bottom - 0.16, z]]} />)}
+    <Guide color={color} points={[[x1, bottom - 0.1, z], [x2, bottom - 0.1, z]]} />
+    {[bottom, top].map((y) => <Guide key={y} color={color} points={[[x1, y, gap.from.centre[2]], [x1 - 0.4, y, z]]} />)}
+    <Guide color={color} points={[[x1 - 0.34, bottom, z], [x1 - 0.34, top, z]]} />
+    <Guide color={color} points={[[x1 - 0.34, top, z], [x1 - 0.34, top + 0.2, z]]} />
+    <GuideLabel position={[x1 - 0.34, top + 0.35, z]} caption="upright tube height">{Math.round(gap.from.size[1] * 1000)} mm</GuideLabel>
+    <GuideLabel position={[(x1 + x2) / 2, bottom - 0.26, z]} caption={`${side} row · centre to centre`}>{Math.round(gap.value)} mm</GuideLabel>
+  </group>;
+};
 
 const Dimensions = ({ model }) => {
   const half = model.deck / 2000;
@@ -18,18 +54,18 @@ const Dimensions = ({ model }) => {
 };
 
 /** Render the original geometry at real scale with fixed-scale camera presets. */
-export const TrailerScene = ({ scene, model, dimensions, view, reset, rotating, onInteract, reducedMotion, controlsRef }) => {
+export const TrailerScene = ({ scene, model, dimensions, measurements, measurementMode, measurementPair, postSide, view, reset, rotating, onInteract, reducedMotion, controlsRef }) => {
   const { size, invalidate } = useThree();
   const firstView = useRef(true);
   useEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
-    const { position, target } = getCameraPose(view, size.width / size.height);
+    const { position, target } = getCameraPose(view, size.width / size.height, dimensions);
     const transition = !firstView.current && !reducedMotion;
     controls.setLookAt(...position, ...target, transition);
     firstView.current = false;
     invalidate();
-  }, [view, reset, size.width, size.height, reducedMotion, controlsRef, invalidate]);
+  }, [view, reset, dimensions, size.width, size.height, reducedMotion, controlsRef, invalidate]);
   useFrame((_, delta) => {
     if (rotating) { controlsRef.current?.rotate(delta * 0.16, 0, false); invalidate(); }
   });
@@ -49,7 +85,7 @@ export const TrailerScene = ({ scene, model, dimensions, view, reset, rotating, 
       <planeGeometry args={[200, 200]} />
       <shadowMaterial transparent opacity={0.2} />
     </mesh>
-    {dimensions && scene && <Dimensions model={model} />}
+    {dimensions && scene && (measurementMode === 'deck' ? <Dimensions model={model} /> : <DetailDimensions data={measurements} mode={measurementMode} pair={measurementPair} side={postSide} />)}
     <CameraControls ref={controlsRef} makeDefault minDistance={1.4} maxDistance={32} maxPolarAngle={Math.PI * 0.499} smoothTime={reducedMotion ? 0 : 0.28} onControlStart={onInteract} />
   </>;
 };

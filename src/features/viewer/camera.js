@@ -9,7 +9,7 @@ const directions = {
 };
 
 /** Fit a shared reference envelope so every trailer uses the same physical scale. */
-export const getCameraPose = (view, aspect) => {
+export const getCameraPose = (view, aspect, includeDimensions = false) => {
   const target = new Vector3(-0.35, 0.72, 0);
   const backward = new Vector3(...directions[view]).normalize();
   const right = new Vector3().crossVectors(new Vector3(0, 1, 0), backward).normalize();
@@ -17,7 +17,7 @@ export const getCameraPose = (view, aspect) => {
   const tangent = Math.tan(37 * Math.PI / 360);
   let distance = 2.5;
   // Includes the largest trailer, loaded bicycles and nominal dimension guides.
-  for (const x of [-2.75, 2.15]) for (const y of [-0.02, 2.05]) for (const z of [-1.1, 1.25]) {
+  for (const x of [-2.75, 2.15]) for (const y of [-0.02, 2.05]) for (const z of (includeDimensions ? [-1.45, 1.8] : [-1.1, 1.25])) {
     const relative = new Vector3(x, y, z).sub(target);
     const depth = relative.dot(backward);
     distance = Math.max(distance,
